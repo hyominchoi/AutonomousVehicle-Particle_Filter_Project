@@ -35,14 +35,14 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     normal_distribution<double> dist_y(y, std_y);
     normal_distribution<double> dist_theta(theta, std_theta);
     
-    for (int i = 0; i < num_particles; ++i) {
+    for (unsigned int i = 0; i < num_particles; ++i) {
         double sample_x, sample_y, sample_theta;
         Particle cur_particle;
         cur_particle.id = i;
         cur_particle.x = dist_x(gen);
         cur_particle.y = dist_y(gen);
         cur_particle.theta = dist_theta(gen);
-        cur_particle.weight = 1./num_particles;
+        cur_particle.weight = 1.;
         cur_particle.associations = {};
         cur_particle.sense_x = {};
         cur_particle.sense_y = {};
@@ -51,8 +51,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
         weights.push_back(cur_particle.weight);
     }
     is_initialized = true;
-    
-
+    return;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -60,6 +59,33 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
+    
+    default_random_engine gen;
+    double std_x = std_pos[0];
+    double std_y = std_pos[1];
+    double std_theta = std_pos[2];
+    
+    for (unsigned int i = 0; i < particles.size(); ++i) {
+        Particle cur_particle = particles[i];
+        double x_f, y_f, theta_f;
+        theta_f = cur_particle.theta + yaw_rate * delta_t;
+        if (yaw_rate > 0.001) {
+            x_f = cur_particle.x + velocity * (sin(theta_f) - sin(cur_particle.theta))/yaw_rate;
+            y_f = cur_particle.y + velocity * (cos(cur_particle.theta) - cos(theta_f))/yaw_rate;
+        }
+        else {
+            x_f = cur_particle.x + velocity * delta_t * cos(theta_f);
+            y_f = cur_particle.y + velocity * delta_t * sin(theta_f);
+        }
+        normal_distribution<double> dist_x(x_f, std_x);
+        normal_distribution<double> dist_y(y_f, std_y);
+        normal_distribution<double> dist_theta(theta_f, std_theta);
+        // update particle position
+        cur_particle.x = dist_x(gen);
+        cur_particle.y = dist_y(gen);
+        cur_particle.theta = dist_theta(gen);
+    }
+    return;
 
 }
 
